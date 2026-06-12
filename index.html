@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoSort — AI Waste Classification & Recycling Assistant</title>
+    <!-- Google Fonts Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <!-- App Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- ml5.js Library for MobileNet Image Classification -->
+    <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
+</head>
+<body>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Global Loader Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loader-card">
+            <span class="loader-icon">♻️</span>
+            <div class="loading-text">Analyzing Waste...</div>
+        </div>
+    </div>
+
+    <!-- Mobile-First App Wrapper -->
+    <div class="app-frame">
+        
+        <!-- Header Branding -->
+        <header class="app-header">
+            <div class="logo-container">
+                <div class="logo-icon">🌿</div>
+                <div>
+                    <h1 class="logo-text">EcoSort</h1>
+                    <div style="font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;">AI Waste Assistant</div>
+                </div>
+            </div>
+            <div class="tag-brutal" style="background-color: var(--primary);">V1.0</div>
+        </header>
+
+        <!-- Main Content Views -->
+        <main>
+            
+            <!-- 1. GATEWAY VIEW (Splash Screen) -->
+            <section id="view-gateway" class="view active">
+                <div class="sticker-card gateway-hero-box">
+                    <div class="logo-icon" style="font-size: 2.5rem; width: 65px; height: 65px; margin-bottom: 15px;">♻️</div>
+                    <h2 class="hero-sticker-title">Sort Smarter.<br>Reduce Waste.</h2>
+                    <p style="font-size: 0.95rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 20px;">
+                        EcoSort uses local on-device AI vision to categorize household items instantly and display India's standard segregation colors.
+                    </p>
+                    
+                    <ul class="hero-feature-list">
+                        <li>
+                            <div class="hero-feature-icon">📸</div>
+                            <span>Instant Camera Identification</span>
+                        </li>
+                        <li>
+                            <div class="hero-feature-icon">🗑️</div>
+                            <span>Official Bin Color Guidelines</span>
+                        </li>
+                        <li>
+                            <div class="hero-feature-icon">💡</div>
+                            <span>Creative Upcycling DIY Tips</span>
+                        </li>
+                        <li>
+                            <div class="hero-feature-icon">📍</div>
+                            <span>Locate Nearest Recycle Units</span>
+                        </li>
+                    </ul>
+
+                    <button id="btn-enter-app" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 14px 20px;">
+                        Get Started ➜
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. DASHBOARD VIEW -->
+            <section id="view-dashboard" class="view">
+                <!-- User Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-value" id="stat-scanned">0</div>
+                        <div class="stat-label">Scans</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="stat-recycled" style="color: var(--accent);">0</div>
+                        <div class="stat-label">DIY Read</div>
+                    </div>
+                </div>
+
+                <!-- Main Guide Card -->
+                <div class="sticker-card">
+                    <h3 class="card-title">🌱 Quick Start Guide</h3>
+                    <p style="font-size: 0.9rem; line-height: 1.4; color: var(--text-muted); margin-bottom: 12px;">
+                        Waste segregation helps cities recycle effectively. Here is how you can use EcoSort to sort your trash:
+                    </p>
+                    <ol style="margin-left: 20px; font-size: 0.9rem; font-weight: 700; display: flex; flex-direction: column; gap: 8px;">
+                        <li>Take a picture of the packaging, bottle, or organic scrap.</li>
+                        <li>Learn if it goes to Blue, Green, Red, or Yellow/Black bins.</li>
+                        <li>Discover direct DIY creative reuse ideas.</li>
+                        <li>Find local recycle collection facilities nearby.</li>
+                    </ol>
+                </div>
+
+                <!-- Dashboard CTAs -->
+                <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;">
+                    <button id="btn-dash-scan" class="btn btn-primary" style="padding: 15px;">
+                        📸 Scan Waste Item
+                    </button>
+                    <button id="btn-dash-stations" class="btn btn-secondary" style="padding: 15px;">
+                        📍 Find Recycle Stations
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3. VISION VIEW (Camera / Upload) -->
+            <section id="view-vision" class="view">
+                <div class="sticker-card">
+                    <h3 class="card-title">📷 Waste Scanner</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Point your camera at a single item or upload an image from your files.
+                    </p>
+
+                    <!-- Camera Viewport Container -->
+                    <div class="camera-container">
+                        <video id="camera-video" autoplay playsinline muted></video>
+                        <canvas id="preview-canvas"></canvas>
+                        <div id="camera-loading-placeholder" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #222; color: #fff; text-align: center; padding: 20px;">
+                            <span style="font-size: 2rem; animation: spin 1s infinite linear; display: inline-block;">⚙️</span>
+                            <p style="margin-top: 10px; font-weight: 700; font-size: 0.85rem;">Accessing camera stream...</p>
+                        </div>
+                    </div>
+
+                    <!-- Vision Controls -->
+                    <div class="vision-controls">
+                        <button id="btn-camera-capture" class="btn btn-primary" style="flex: 2;">
+                            📸 Capture & Classify
+                        </button>
+                        <button id="btn-camera-toggle" class="btn btn-secondary" style="flex: 1; font-size: 0.85rem; padding: 0 10px;">
+                            🔄 Switch
+                        </button>
+                    </div>
+
+                    <!-- Divider -->
+                    <div style="display: flex; align-items: center; text-align: center; margin: 20px 0; font-weight: 800; font-size: 0.8rem; color: #777;">
+                        <div style="flex-grow: 1; border-top: 2px dashed #000;"></div>
+                        <span style="padding: 0 10px; text-transform: uppercase;">OR UPLOAD FILE</span>
+                        <div style="flex-grow: 1; border-top: 2px dashed #000;"></div>
+                    </div>
+
+                    <!-- File Input Area -->
+                    <div class="file-upload-zone" id="file-dropzone">
+                        <div class="file-upload-icon">📂</div>
+                        <h4 style="font-weight: 800;">Select Image File</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">Click to browse device storage</p>
+                        <input type="file" id="file-input" class="file-upload-input" accept="image/*" capture="environment">
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. RESULTS VIEW -->
+            <section id="view-results" class="view">
+                <!-- Rendered dynamically by ui.js inside results-content -->
+                <div id="results-content"></div>
+            </section>
+
+            <!-- 5. RECYCLE STATIONS VIEW -->
+            <section id="view-recycle-stations" class="view">
+                <!-- Search panel -->
+                <div class="sticker-card">
+                    <h3 class="card-title">📍 Nearby Recycling Search</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                        Locate recycling facilities within 5km. Grant GPS permissions, or search by typing your city name below.
+                    </p>
+
+                    <div class="search-container-box">
+                        <input type="text" id="input-city" class="input-brutal" placeholder="Enter city name (e.g. Indore)">
+                        <button id="btn-city-search" class="btn btn-secondary" style="padding: 10px 15px;">
+                            🔍
+                        </button>
+                    </div>
+
+                    <button id="btn-gps-search" class="btn btn-accent" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        📍 Use My Current GPS Location
+                    </button>
+                </div>
+
+                <!-- Results container -->
+                <div class="stations-results-wrapper">
+                    <h2 class="card-title" id="stations-results-header" style="margin-left: 5px; margin-bottom: 15px;">
+                        📍 Nearby Recycling Centers
+                    </h2>
+                    <div id="stations-results-list">
+                        <!-- Stations rendered dynamically here -->
+                        <div class="sticker-card text-center" style="padding: 30px;">
+                            <p style="color: var(--text-muted); margin: 0;">Click one of the search buttons above to fetch centers.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Bottom Navigation Tabs (Sticky) -->
+        <nav class="bottom-nav" id="app-nav" style="display: none;">
+            <a class="nav-link active" data-route="dashboard">
+                <span class="nav-link-icon">📊</span>
+                <span>Home</span>
+            </a>
+            <a class="nav-link" data-route="vision">
+                <span class="nav-link-icon">📸</span>
+                <span>Scan</span>
+            </a>
+            <a class="nav-link" data-route="recycle-stations">
+                <span class="nav-link-icon">📍</span>
+                <span>Centers</span>
+            </a>
+        </nav>
+
+    </div>
+
+    <!-- Application Module Entrypoint -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
